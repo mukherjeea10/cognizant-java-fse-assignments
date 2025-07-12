@@ -1,0 +1,53 @@
+package com.example.jwtauth;
+
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Base64;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+@RestController
+public class AuthenticationController {
+
+    @GetMapping("/authenticate")
+    public ResponseEntity<Map<String, String>> authenticate(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        Map<String, String> response = new HashMap<>();
+
+        if (authHeader == null || !authHeader.startsWith("Basic ")) {
+            response.put("error", "Missing or invalid Authorization header");
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            String user = getUser(authHeader);
+            String token = generateJwt(user);
+            response.put("token", token);
+            return ResponseEntity.ok(response);
+        } catch (Exception ex) {
+            ex.printStackTrace(); // Also gets printed in Eclipse console
+            response.put("error", "Internal error while generating token: " + ex.getMessage());
+            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private String getUser(String authHeader) {
+        String encodedCredentials = authHeader.replace("Basic ", "");
+        byte[] decodedBytes = Base64.getDecoder().decode(encodedCredentials);
+        String decoded = new String(decodedBytes);
+        return decoded.split(":")[0];
+    }
+
+    private String generateJwt(String user) {
+        return Jwts.builder()
+                .setSubject(user)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 1200000)) // 20 mins
+                .signWith(SignatureAlgorithm.HS256, "secretkey")
+                .compact();
+    }
+}
