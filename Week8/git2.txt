@@ -1,0 +1,1 @@
+gitignore -->files or folders mentioned inside gitignore file are not tracked by git so their changes are not staged while commiting
